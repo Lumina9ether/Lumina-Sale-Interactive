@@ -1,7 +1,9 @@
 const orb = document.getElementById("orb");
-const subtitleBox = document.getElementById("subtitles");
+const subtitleBox = document.getElementById("subtitles") || document.getElementById("subtitle-container");
 const stopButton = document.getElementById("stop-button");
 let currentAudio = null;
+let recognition;
+let isListening = false;
 
 function setOrbState(state) {
     if (!orb) return;
@@ -24,10 +26,16 @@ async function speak(text) {
             if (currentAudio) currentAudio.pause();
             currentAudio = new Audio(data.audio);
             currentAudio.play();
-            currentAudio.onended = () => setOrbState("idle");
+            currentAudio.onended = () => {
+                setOrbState("idle");
+                setTimeout(() => startListening(), 1000);
+            };
         } else {
             setOrbState("speaking");
-            setTimeout(() => setOrbState("idle"), 3000);
+            setTimeout(() => {
+                setOrbState("idle");
+                startListening();
+            }, 3000);
         }
     } catch (err) {
         console.error("Error:", err);
@@ -35,7 +43,33 @@ async function speak(text) {
     }
 }
 
-stopButton.addEventListener("click", () => {
+function startListening() {
+    if (!('webkitSpeechRecognition' in window)) {
+        alert("Your browser does not support voice recognition");
+        return;
+    }
+
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => { isListening = true; };
+    recognition.onend = () => { isListening = false; };
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        handleVoiceTranscript(transcript);
+    };
+
+    recognition.start();
+}
+
+function handleVoiceTranscript(transcript) {
+    userInput.value = transcript;
+    askButton.click();
+}
+
+stopButton?.addEventListener("click", () => {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -45,11 +79,9 @@ stopButton.addEventListener("click", () => {
 });
 
 const heyLuminaBtn = document.getElementById("hey-lumina-button");
-if (heyLuminaBtn) {
-    heyLuminaBtn.addEventListener("click", () => {
-        speak("Welcome to Lumina Legacy. I am your AI assistant.");
-    });
-}
+heyLuminaBtn?.addEventListener("click", () => {
+    speak("Welcome to Lumina Legacy. I am your AI assistant.");
+});
 
 const askButton = document.getElementById("ask-lumina");
 const userInput = document.getElementById("user-input");
@@ -108,28 +140,27 @@ async function loadMemoryForm() {
 }
 
 const memoryForm = document.getElementById("memory-form");
-if (memoryForm) {
-    memoryForm.onsubmit = async function (e) {
-        e.preventDefault();
-        const body = {
-            name: this.name.value,
-            goal: this.goal.value,
-            voice_style: this.voice_style.value,
-            income_target: this.income_target.value,
-            mood: this.mood.value
-        };
-        await fetch("/update-memory", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-        alert("✅ Memory updated!");
+memoryForm?.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const body = {
+        name: this.name.value,
+        goal: this.goal.value,
+        voice_style: this.voice_style.value,
+        income_target: this.income_target.value,
+        mood: this.mood.value
     };
-}
+    await fetch("/update-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    alert("✅ Memory updated!");
+});
 
 window.onload = () => {
     loadMilestones?.();
     loadMemoryForm?.();
+    startListening();
 };
 
 const ctaButton = document.createElement("button");
