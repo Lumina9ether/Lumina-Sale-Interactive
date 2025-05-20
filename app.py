@@ -11,19 +11,11 @@ from google.cloud import texttospeech
 app = Flask(__name__)
 CORS(app)
 
-SALES_PITCHES = {
-    "spark": "The Lumina Spark Package is perfect if you're ready to start but want to go at your own pace. It’s a step-by-step guide with everything you need to launch your online business. Just $297. Ready to activate Spark?",
-    "ignite": "The Lumina Ignite Package is for you if you're ready to go fast. It's a 7-day guided activation with accountability and coaching for just $997. Want me to lock you in?",
-    "sovereign": "Lumina Sovereign is our done-for-you premium build. We launch your brand, site, automation, and more—fully done for you, at $2222. Would you like to schedule your build?"
-}
-
-
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "lumina-voice-ai.json"
 tts_client = texttospeech.TextToSpeechClient()
 
 MEMORY_FILE = "memory.json"
-
 
 def load_memory():
     try:
@@ -32,22 +24,16 @@ def load_memory():
     except:
         return {}
 
-
 def save_memory(data):
     with open(MEMORY_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-
 def check_missing_memory(memory):
     missing = []
-    if not memory["personal"].get("name"):
-        missing.append("name")
-    if not memory["business"].get("goal"):
-        missing.append("goal")
-    if not memory["preferences"].get("voice_style"):
-        missing.append("voice_style")
+    if not memory["personal"].get("name"): missing.append("name")
+    if not memory["business"].get("goal"): missing.append("goal")
+    if not memory["preferences"].get("voice_style"): missing.append("voice_style")
     return missing
-
 
 def update_timeline_from_text(text, memory):
     keywords = ["mark today as", "record", "log", "note", "milestone"]
@@ -60,7 +46,6 @@ def update_timeline_from_text(text, memory):
             timeline.append({"date": today, "event": event})
             memory["timeline"] = timeline
     return memory
-
 
 def update_memory_from_text(text, memory):
     if "my name is" in text.lower():
@@ -77,26 +62,9 @@ def update_memory_from_text(text, memory):
             memory["preferences"]["voice_style"] = style.group(1).strip()
     return memory
 
-
-def detect_funnel_entry(text):
-    lowered = text.lower()
-    if any(kw in lowered for kw in ["i'm just looking", "what is this", "not sure", "thinking about"]):
-        return "explorer"
-    elif any(kw in lowered for kw in ["how do i start", "help me", "learn", "understand"]):
-        return "curious"
-    elif any(kw in lowered for kw in ["i'm ready", "get started", "invest", "sign up"]):
-        return "ready"
-    elif any(kw in lowered for kw in ["buy", "purchase", "checkout"]):
-        return "buyer"
-    elif any(kw in lowered for kw in ["need support", "have an issue", "need help"]):
-        return "support"
-    return "explorer"
-
-
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -109,12 +77,9 @@ def ask():
         memory = load_memory()
         memory = update_memory_from_text(question, memory)
         memory = update_timeline_from_text(question, memory)
-
-        funnel_tag = detect_funnel_entry(question)
-        memory["funnel_entry_tag"] = funnel_tag
-
         save_memory(memory)
 
+        # Detect sales intent
         sales_trigger = ""
         if any(k in question.lower() for k in ["start a business", "build a brand", "get more clients", "create content", "automate", "get leads"]):
             sales_trigger = "spark"
@@ -160,16 +125,13 @@ def ask():
         )
 
         answer = response.choices[0].message.content.strip()
+
         if ask_back_note:
             answer += "\n\n" + ask_back_note
 
-        if sales_trigger in SALES_PITCHES:
-        answer += f"\n\n✨ {SALES_PITCHES[sales_trigger]}"
-    
-    return jsonify({"reply": answer, "cta": sales_trigger, "tag": funnel_tag})
+        return jsonify({"reply": answer, "cta": sales_trigger})
     except Exception as e:
         return jsonify({"reply": f"Error: {str(e)}"})
-
 
 @app.route("/speak", methods=["POST"])
 def speak():
@@ -196,17 +158,14 @@ def speak():
     except Exception as e:
         return jsonify({"audio": "", "error": str(e)})
 
-
 @app.route("/timeline")
 def timeline():
     memory = load_memory()
     return jsonify({"timeline": memory.get("timeline", [])})
 
-
 @app.route("/memory")
 def memory_view():
     return jsonify(load_memory())
-
 
 @app.route("/update-memory", methods=["POST"])
 def update_memory():
@@ -219,36 +178,6 @@ def update_memory():
     memory["emotional"]["recent_state"] = data.get("mood", "")
     save_memory(memory)
     return jsonify({"status": "success"})
-
-
-@app.route("/save-lead", methods=["POST"])
-def save_lead():
-    data = request.get_json()
-    email = data.get("email")
-    tier = data.get("tierUrl")
-
-    if not email:
-        return jsonify({"status": "error", "message": "Missing email"}), 400
-
-    lead_data = {
-        "email": email,
-        "tier": tier,
-        "timestamp": datetime.now().isoformat()
-    }
-
-    leads = []
-    try:
-        with open("leads.json", "r") as f:
-            leads = json.load(f)
-    except:
-        leads = []
-
-    leads.append(lead_data)
-    with open("leads.json", "w") as f:
-        json.dump(leads, f, indent=2)
-
-    return jsonify({"status": "success"})
-
 
 if __name__ == "__main__":
     app.run(debug=True)
