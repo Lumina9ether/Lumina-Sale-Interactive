@@ -1,9 +1,7 @@
 const orb = document.getElementById("orb");
-const subtitleBox = document.getElementById("subtitles") || document.getElementById("subtitle-container");
+const subtitleBox = document.getElementById("subtitles");
 const stopButton = document.getElementById("stop-button");
 let currentAudio = null;
-let recognition;
-let isListening = false;
 
 function setOrbState(state) {
     if (!orb) return;
@@ -26,16 +24,10 @@ async function speak(text) {
             if (currentAudio) currentAudio.pause();
             currentAudio = new Audio(data.audio);
             currentAudio.play();
-            currentAudio.onended = () => {
-                setOrbState("idle");
-                setTimeout(() => startListening(), 1000);
-            };
+            currentAudio.onended = () => setOrbState("idle");
         } else {
             setOrbState("speaking");
-            setTimeout(() => {
-                setOrbState("idle");
-                startListening();
-            }, 3000);
+            setTimeout(() => setOrbState("idle"), 3000);
         }
     } catch (err) {
         console.error("Error:", err);
@@ -43,33 +35,7 @@ async function speak(text) {
     }
 }
 
-function startListening() {
-    if (!('webkitSpeechRecognition' in window)) {
-        alert("Your browser does not support voice recognition");
-        return;
-    }
-
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => { isListening = true; };
-    recognition.onend = () => { isListening = false; };
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        handleVoiceTranscript(transcript);
-    };
-
-    recognition.start();
-}
-
-function handleVoiceTranscript(transcript) {
-    userInput.value = transcript;
-    askButton.click();
-}
-
-stopButton?.addEventListener("click", () => {
+stopButton.addEventListener("click", () => {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -79,9 +45,11 @@ stopButton?.addEventListener("click", () => {
 });
 
 const heyLuminaBtn = document.getElementById("hey-lumina-button");
-heyLuminaBtn?.addEventListener("click", () => {
-    speak("Welcome to Lumina Legacy. I am your AI assistant.");
-});
+if (heyLuminaBtn) {
+    heyLuminaBtn.addEventListener("click", () => {
+        speak("Welcome to Lumina Legacy. I am your AI assistant.");
+    });
+}
 
 const askButton = document.getElementById("ask-lumina");
 const userInput = document.getElementById("user-input");
@@ -140,27 +108,28 @@ async function loadMemoryForm() {
 }
 
 const memoryForm = document.getElementById("memory-form");
-memoryForm?.addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const body = {
-        name: this.name.value,
-        goal: this.goal.value,
-        voice_style: this.voice_style.value,
-        income_target: this.income_target.value,
-        mood: this.mood.value
+if (memoryForm) {
+    memoryForm.onsubmit = async function (e) {
+        e.preventDefault();
+        const body = {
+            name: this.name.value,
+            goal: this.goal.value,
+            voice_style: this.voice_style.value,
+            income_target: this.income_target.value,
+            mood: this.mood.value
+        };
+        await fetch("/update-memory", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        alert("✅ Memory updated!");
     };
-    await fetch("/update-memory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
-    alert("✅ Memory updated!");
-});
+}
 
 window.onload = () => {
     loadMilestones?.();
     loadMemoryForm?.();
-    startListening();
 };
 
 const ctaButton = document.createElement("button");
@@ -195,3 +164,40 @@ function showCTA(tier) {
     ctaButton.onclick = () => window.open(url, "_blank");
     ctaButton.style.display = "inline-block";
 }
+
+
+const emailInput = document.getElementById("email-input");
+const emailButton = document.getElementById("email-submit-button");
+const emailConfirm = document.getElementById("email-confirm");
+
+emailButton?.addEventListener("click", async () => {
+    const email = emailInput?.value.trim();
+    if (!email || !email.includes("@")) {
+        emailConfirm.textContent = "Please enter a valid email.";
+        return;
+    }
+
+    const ctaButton = document.getElementById("cta-button");
+    const tierUrl = ctaButton?.onclick?.toString().includes("stripe.com")
+        ? (ctaButton?.onclick + "").match(/https[^\"]+/)?.[0] || ""
+        : "";
+
+    try {
+        const res = await fetch("/save-lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, tierUrl })
+        });
+
+        const data = await res.json();
+        if (data.status === "success") {
+            emailConfirm.textContent = "✅ Email added! Stay tuned.";
+            emailInput.value = "";
+        } else {
+            emailConfirm.textContent = "❌ Failed to save email.";
+        }
+    } catch (err) {
+        console.error("Lead save error:", err);
+        emailConfirm.textContent = "⚠️ An error occurred.";
+    }
+});
