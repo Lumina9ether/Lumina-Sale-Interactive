@@ -1,75 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
- <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   Lumina Legacy LLC
-  </title>
-  <link href="static/styles.css" rel="stylesheet"/>
-  <style>
-   body {
-      background: url('https://www.transparenttextures.com/patterns/stardust.png'), radial-gradient(ellipse at bottom, #0b0c2a 0%, #000000 100%);
-      background-size: cover;
-      background-attachment: fixed;
-      color: #ffffff;
-      font-family: 'Orbitron', sans-serif;
-      text-shadow: 0 0 5px #fff, 0 0 10px #0ff, 0 0 20px #0ff;
-    }
-    h1.glow-title {
-      text-align: center;
-      font-size: 3rem;
-      color: #00ffff;
-      text-shadow: 0 0 10px #00ffff, 0 0 20px #00cccc;
-      margin-top: 1rem;
-    }
-    section {
-      text-align: center;
-      margin: 3rem auto;
-      max-width: 800px;
-      padding: 0 1rem;
-    }
-    input, button {
-      padding: 10px;
-      margin: 10px;
-      font-size: 1rem;
-      border-radius: 5px;
-    }
-    .orb-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 2rem;
-    }
-    .orb {
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #66fcf1, #1f2833, #0b0c2a);
-      box-shadow: 0 0 30px 15px #00ffe7;
-      animation: pulse 2.5s infinite;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 15px 5px #00ffe7; }
-      50% { box-shadow: 0 0 35px 20px #00ffe7; }
-      100% { box-shadow: 0 0 15px 5px #00ffe7; }
-    }
-    .tier {
-      transition: all 0.3s ease;
-      border: 1px solid transparent;
-      box-shadow: 0 0 10px rgba(0,255,255,0.1);
-      cursor: pointer;
-    }
-    .tier:hover {
-      background: rgba(0, 255, 255, 0.1);
-      transform: scale(1.02);
-      border: 1px solid #00ffff;
-      box-shadow: 0 0 20px #00ffff;
-    }
-    ...
-  </style>
- </head>
- <body>
-  ...
- </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lumina Legacy LLC</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+</head>
+<body>
+  <canvas id="stars"></canvas>
+
+  <div class="orb-container">
+    <div id="orb" class="orb idle"></div>
+  </div>
+
+  <div id="subtitle-container"></div>
+
+  <div id="input-area">
+    <input id="user-input" type="text" placeholder="Ask Lumina..." />
+    <button onclick="sendQuestion()">Send</button>
+  </div>
+
+  <div id="response-container"></div>
+
+  <script src="/static/stars.js"></script>
+  <script src="/static/script.js"></script>
+</body>
 </html>
