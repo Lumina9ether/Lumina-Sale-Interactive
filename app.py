@@ -79,7 +79,6 @@ def ask():
         memory = update_timeline_from_text(question, memory)
         save_memory(memory)
 
-        # Detect sales intent
         sales_trigger = ""
         if any(k in question.lower() for k in ["start a business", "build a brand", "get more clients", "create content", "automate", "get leads"]):
             sales_trigger = "spark"
@@ -178,6 +177,3 @@ def update_memory():
     memory["emotional"]["recent_state"] = data.get("mood", "")
     save_memory(memory)
     return jsonify({"status": "success"})
-
-if __name__ == "__main__":
-    app.run(debug=True)
