@@ -2,7 +2,6 @@ const orb = document.getElementById("orb");
 const subtitleBox = document.getElementById("subtitles");
 const stopButton = document.getElementById("stop-button");
 let currentAudio = null;
-let recognition;
 
 function setOrbState(state) {
     if (!orb) return;
@@ -25,16 +24,10 @@ async function speak(text) {
             if (currentAudio) currentAudio.pause();
             currentAudio = new Audio(data.audio);
             currentAudio.play();
-            currentAudio.onended = () => {
-                setOrbState("idle");
-                setTimeout(() => startListening(), 1000);
-            };
+            currentAudio.onended = () => setOrbState("idle");
         } else {
             setOrbState("speaking");
-            setTimeout(() => {
-                setOrbState("idle");
-                startListening();
-            }, 3000);
+            setTimeout(() => setOrbState("idle"), 3000);
         }
     } catch (err) {
         console.error("Error:", err);
@@ -42,30 +35,7 @@ async function speak(text) {
     }
 }
 
-function startListening() {
-    if (!('webkitSpeechRecognition' in window)) {
-        alert("Your browser does not support voice recognition");
-        return;
-    }
-
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => console.log("🎤 Listening...");
-    recognition.onend = () => console.log("🎤 Stopped listening.");
-
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        userInput.value = transcript;
-        askButton.click();
-    };
-
-    recognition.start();
-}
-
-stopButton?.addEventListener("click", () => {
+stopButton.addEventListener("click", () => {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -97,7 +67,7 @@ if (askButton && userInput) {
                 const data = await response.json();
                 if (data.reply) {
                     speak(data.reply);
-                    showCTA(data.cta);
+                    showCTA(data.cta, data.tag); // 🔁 Use tag to adjust CTA
                 }
             } catch (err) {
                 console.error("Error:", err);
@@ -160,7 +130,6 @@ if (memoryForm) {
 window.onload = () => {
     loadMilestones?.();
     loadMemoryForm?.();
-    startListening(); // 🔁 Auto voice loop starts here
 };
 
 const ctaButton = document.createElement("button");
@@ -176,8 +145,22 @@ ctaButton.style.fontSize = "16px";
 ctaButton.style.cursor = "pointer";
 subtitleBox?.parentNode?.appendChild(ctaButton);
 
-function showCTA(tier) {
+function showCTA(tier, funnelTag) {
     let text = "", url = "";
+
+    // Funnel override logic
+    if (funnelTag === "support") {
+        ctaButton.style.display = "none";
+        return;
+    }
+    if (funnelTag === "explorer") {
+        tier = "spark";
+    } else if (funnelTag === "curious") {
+        tier = "ignite";
+    } else if (funnelTag === "ready" || funnelTag === "buyer") {
+        tier = "sovereign";
+    }
+
     if (tier === "spark") {
         text = "Get Started with Lumina Spark ($297)";
         url = "https://buy.stripe.com/test_00wfZacRcgHV1SA0W2awo00";
@@ -191,6 +174,7 @@ function showCTA(tier) {
         ctaButton.style.display = "none";
         return;
     }
+
     ctaButton.textContent = text;
     ctaButton.onclick = () => window.open(url, "_blank");
     ctaButton.style.display = "inline-block";
@@ -207,7 +191,8 @@ emailButton?.addEventListener("click", async () => {
         return;
     }
 
-    const ctaUrl = ctaButton?.onclick?.toString().includes("stripe.com")
+    const ctaButton = document.getElementById("cta-button");
+    const tierUrl = ctaButton?.onclick?.toString().includes("stripe.com")
         ? (ctaButton?.onclick + "").match(/https[^\"]+/)?.[0] || ""
         : "";
 
@@ -215,7 +200,7 @@ emailButton?.addEventListener("click", async () => {
         const res = await fetch("/save-lead", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, tierUrl: ctaUrl })
+            body: JSON.stringify({ email, tierUrl })
         });
 
         const data = await res.json();
