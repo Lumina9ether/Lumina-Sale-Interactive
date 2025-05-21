@@ -92,13 +92,12 @@ def ask():
 
     try:
         memory = load_memory()
-        memory.setdefault("meta", {}).setdefault("already_asked", [])
-
         memory = update_memory_from_text(question, memory)
         memory = update_timeline_from_text(question, memory)
 
         funnel_tag = detect_funnel_entry(question)
         memory["funnel_entry_tag"] = funnel_tag
+        save_memory(memory)
 
         sales_trigger = ""
         if any(k in question.lower() for k in ["start a business", "build a brand", "get more clients", "create content", "automate", "get leads"]):
@@ -110,10 +109,21 @@ def ask():
 
         ask_back_note = ""
         missing = check_missing_memory(memory)
-        unasked = [m for m in missing if m not in memory["meta"]["already_asked"]]
-        if unasked:
-            ask_back_note = f"By the way, I’d love to know your {', '.join(unasked)}. You can tell me by saying things like 'My goal is...' or 'My name is...'."
-            memory["meta"]["already_asked"].extend(unasked)
+        if missing:
+            ask_back_note = f"By the way, I’d love to know your {', '.join(missing)}. You can tell me by saying things like 'My goal is...' or 'My name is...'."
+
+        # 🔮 Add tone-shifting logic based on funnel_tag
+        tone_instruction = ""
+        if funnel_tag == "explorer":
+            tone_instruction = "Speak gently, like a cosmic guide for someone just beginning their journey."
+        elif funnel_tag == "curious":
+            tone_instruction = "Be encouraging and affirming. They’re exploring and need motivation."
+        elif funnel_tag == "ready":
+            tone_instruction = "Speak with authority and clarity, like a builder initiating momentum."
+        elif funnel_tag == "buyer":
+            tone_instruction = "Be clear, confident, and to the point — they’re ready to act."
+        elif funnel_tag == "support":
+            tone_instruction = "Respond with empathy, care, and active support."
 
         context_intro = (
             f"User Name: {memory['personal'].get('name', '')}\n"
@@ -136,6 +146,7 @@ def ask():
                 return jsonify({"reply": "You don't have any milestones recorded yet. You can say: mark today as 'Got my first sale'."})
 
         conversation = [
+            {"role": "system", "content": tone_instruction},
             {"role": "system", "content": "You are Lumina, a soulful AI guide that adapts to the user's evolving journey."},
             {"role": "system", "content": f"User memory context: {context_intro}"},
             {"role": "user", "content": question}
@@ -150,7 +161,6 @@ def ask():
         if ask_back_note:
             answer += "\n\n" + ask_back_note
 
-        save_memory(memory)
         return jsonify({"reply": answer, "cta": sales_trigger, "tag": funnel_tag})
     except Exception as e:
         return jsonify({"reply": f"Error: {str(e)}"})
