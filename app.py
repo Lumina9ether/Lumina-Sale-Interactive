@@ -17,6 +17,31 @@ tts_client = texttospeech.TextToSpeechClient()
 
 MEMORY_FILE = "memory.json"
 
+PACKAGE_DETAILS = {
+    "spark": (
+        "🌟 **Lumina Spark** is a 48-hour self-paced digital starter kit. It includes:\n"
+        "- Brand and niche setup templates\n"
+        "- A one-page AI funnel system\n"
+        "- Pre-written email and caption scripts\n"
+        "- Video walkthroughs and automations\n"
+        "Spark is perfect for creators or side-hustlers launching fast with zero tech overwhelm."
+    ),
+    "ignite": (
+        "🔥 **Lumina Ignite** is our 7-day guided experience for entrepreneurs who want accountability.\n"
+        "- Daily Zoom sessions and hands-on setup\n"
+        "- Templates + coaching to finish your website, funnel, emails, and product\n"
+        "- Group momentum to launch with confidence\n"
+        "This is for you if you need a push and a plan to launch *now*."
+    ),
+    "sovereign": (
+        "👑 **Lumina Sovereign** is our done-for-you elite package.\n"
+        "- We build your entire digital business system (branding, funnel, automations, voice)\n"
+        "- Custom AI content, landing pages, lead system, and email setup\n"
+        "- 1:1 onboarding and system handoff\n"
+        "If you're ready to operate like a CEO and let Lumina do the heavy lifting, this is for you."
+    )
+}
+
 def load_memory():
     try:
         with open(MEMORY_FILE, "r") as f:
@@ -96,26 +121,15 @@ def ask():
 
         funnel_tag = detect_funnel_entry(question)
         memory["funnel_entry_tag"] = funnel_tag
-
         save_memory(memory)
 
-        sales_trigger = ""
-        if any(k in question.lower() for k in ["spark"]):
-            return jsonify({"reply": "Lumina Spark is a self-paced starter system. You'll learn to brand, automate, and monetize in just 48 hours. Would you like to see the full outline?", "cta": "spark", "tag": funnel_tag})
-        elif any(k in question.lower() for k in ["ignite"]):
-            return jsonify({"reply": "Lumina Ignite is our 7-day intensive. It's guided, includes accountability, and helps you launch in a week. Want to take a peek at the journey?", "cta": "ignite", "tag": funnel_tag})
-        elif any(k in question.lower() for k in ["sovereign"]):
-            return jsonify({"reply": "Lumina Sovereign is done-for-you. We build your entire business system while you lead your vision. Ready to activate that power?", "cta": "sovereign", "tag": funnel_tag})
-
-        # Mood/goal-based suggestions
-        goal = memory["business"].get("goal", "").lower()
-        mood = memory["emotional"].get("recent_state", "").lower()
-        offer_suggestion = ""
-
-        if "automate" in goal:
-            offer_suggestion = "It sounds like automation is your goal. Lumina Sovereign might be perfect — would you like to explore that?"
-        elif "overwhelmed" in mood or "stuck" in mood:
-            offer_suggestion = "You've felt overwhelmed recently. The 7-Day Ignite path could give you momentum fast. Want to check it out?"
+        lowered = question.lower()
+        if "spark" in lowered:
+            return jsonify({"reply": PACKAGE_DETAILS["spark"], "cta": "spark", "tag": funnel_tag})
+        elif "ignite" in lowered:
+            return jsonify({"reply": PACKAGE_DETAILS["ignite"], "cta": "ignite", "tag": funnel_tag})
+        elif "sovereign" in lowered:
+            return jsonify({"reply": PACKAGE_DETAILS["sovereign"], "cta": "sovereign", "tag": funnel_tag})
 
         ask_back_note = ""
         missing = check_missing_memory(memory)
@@ -148,13 +162,10 @@ def ask():
         )
 
         answer = response.choices[0].message.content.strip()
-
-        if offer_suggestion:
-            answer += "\n\n" + offer_suggestion
         if ask_back_note:
             answer += "\n\n" + ask_back_note
 
-        return jsonify({"reply": answer, "cta": sales_trigger, "tag": funnel_tag})
+        return jsonify({"reply": answer, "cta": "", "tag": funnel_tag})
     except Exception as e:
         return jsonify({"reply": f"Error: {str(e)}"})
 
