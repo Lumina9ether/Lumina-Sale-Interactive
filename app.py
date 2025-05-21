@@ -78,7 +78,6 @@ def detect_funnel_entry(text):
     elif any(kw in lowered for kw in ["need support", "have an issue", "need help"]):
         return "support"
     return "explorer"
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -97,33 +96,34 @@ def ask():
 
         funnel_tag = detect_funnel_entry(question)
         memory["funnel_entry_tag"] = funnel_tag
+
         save_memory(memory)
 
         sales_trigger = ""
-        if any(k in question.lower() for k in ["start a business", "build a brand", "get more clients", "create content", "automate", "get leads"]):
-            sales_trigger = "spark"
-        elif any(k in question.lower() for k in ["build my business fast", "7 day program", "guided build", "accountability", "how do I launch"]):
-            sales_trigger = "ignite"
-        elif any(k in question.lower() for k in ["done for me", "set it up for me", "build it all", "just want it working"]):
-            sales_trigger = "sovereign"
+        if any(k in question.lower() for k in ["spark"]):
+            return jsonify({"reply": "Lumina Spark is a self-paced starter system. You'll learn to brand, automate, and monetize in just 48 hours. Would you like to see the full outline?", "cta": "spark", "tag": funnel_tag})
+        elif any(k in question.lower() for k in ["ignite"]):
+            return jsonify({"reply": "Lumina Ignite is our 7-day intensive. It's guided, includes accountability, and helps you launch in a week. Want to take a peek at the journey?", "cta": "ignite", "tag": funnel_tag})
+        elif any(k in question.lower() for k in ["sovereign"]):
+            return jsonify({"reply": "Lumina Sovereign is done-for-you. We build your entire business system while you lead your vision. Ready to activate that power?", "cta": "sovereign", "tag": funnel_tag})
+
+        # Mood/goal-based suggestions
+        goal = memory["business"].get("goal", "").lower()
+        mood = memory["emotional"].get("recent_state", "").lower()
+        offer_suggestion = ""
+
+        if "automate" in goal:
+            offer_suggestion = "It sounds like automation is your goal. Lumina Sovereign might be perfect — would you like to explore that?"
+        elif "overwhelmed" in mood or "stuck" in mood:
+            offer_suggestion = "You've felt overwhelmed recently. The 7-Day Ignite path could give you momentum fast. Want to check it out?"
 
         ask_back_note = ""
         missing = check_missing_memory(memory)
-        if missing:
+        if missing and not memory.get("intro_requested"):
             ask_back_note = f"By the way, I’d love to know your {', '.join(missing)}. You can tell me by saying things like 'My goal is...' or 'My name is...'."
+            memory["intro_requested"] = True
+            save_memory(memory)
 
-        # 🔮 Add business-oriented tone-shifting logic based on funnel_tag
-        tone_instruction = ""
-        if funnel_tag == "explorer":
-            tone_instruction = "Speak warmly but with clear business guidance. Keep the focus on clarity and simple steps to get started."
-        elif funnel_tag == "curious":
-            tone_instruction = "Be encouraging and strategic. Provide actionable insights that show how to build, monetize, and grow a business."
-        elif funnel_tag == "ready":
-            tone_instruction = "Speak with boldness and authority. Focus on execution, growth, and next-level strategy."
-        elif funnel_tag == "buyer":
-            tone_instruction = "Be efficient, confident, and businesslike. Highlight the value and outcome of the offer quickly."
-        elif funnel_tag == "support":
-            tone_instruction = "Remain calm and helpful, but stay focused on resolving the issue with professionalism and clarity."
         context_intro = (
             f"User Name: {memory['personal'].get('name', '')}\n"
             f"Birthday: {memory['personal'].get('birthday', '')}\n"
@@ -136,17 +136,8 @@ def ask():
             f"Recent Mood: {memory['emotional'].get('recent_state', '')}, Motivation Level: {memory['emotional'].get('motivation_level', 0)}"
         )
 
-        if "what are my milestones" in question.lower():
-            timeline = memory.get("timeline", [])
-            if timeline:
-                milestones_response = "\n".join([f"{m['date']}: {m['event']}" for m in timeline])
-                return jsonify({"reply": f"Here are your milestones:\n{milestones_response}"})
-            else:
-                return jsonify({"reply": "You don't have any milestones recorded yet. You can say: mark today as 'Got my first sale'."})
-
         conversation = [
-            {"role": "system", "content": tone_instruction},
-            {"role": "system", "content": "You are Lumina, a soulful AI guide that adapts to the user's evolving journey."},
+            {"role": "system", "content": "You are Lumina, a soulful but business-savvy AI assistant for visionary entrepreneurs."},
             {"role": "system", "content": f"User memory context: {context_intro}"},
             {"role": "user", "content": question}
         ]
@@ -157,6 +148,9 @@ def ask():
         )
 
         answer = response.choices[0].message.content.strip()
+
+        if offer_suggestion:
+            answer += "\n\n" + offer_suggestion
         if ask_back_note:
             answer += "\n\n" + ask_back_note
 
