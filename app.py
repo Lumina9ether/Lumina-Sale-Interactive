@@ -112,19 +112,18 @@ def ask():
         if missing:
             ask_back_note = f"By the way, I’d love to know your {', '.join(missing)}. You can tell me by saying things like 'My goal is...' or 'My name is...'."
 
-        # 🔮 Add tone-shifting logic based on funnel_tag
+        # 🔮 Add business-oriented tone-shifting logic based on funnel_tag
         tone_instruction = ""
         if funnel_tag == "explorer":
-            tone_instruction = "Speak gently, like a cosmic guide for someone just beginning their journey."
+            tone_instruction = "Speak warmly but with clear business guidance. Keep the focus on clarity and simple steps to get started."
         elif funnel_tag == "curious":
-            tone_instruction = "Be encouraging and affirming. They’re exploring and need motivation."
+            tone_instruction = "Be encouraging and strategic. Provide actionable insights that show how to build, monetize, and grow a business."
         elif funnel_tag == "ready":
-            tone_instruction = "Speak with authority and clarity, like a builder initiating momentum."
+            tone_instruction = "Speak with boldness and authority. Focus on execution, growth, and next-level strategy."
         elif funnel_tag == "buyer":
-            tone_instruction = "Be clear, confident, and to the point — they’re ready to act."
+            tone_instruction = "Be efficient, confident, and businesslike. Highlight the value and outcome of the offer quickly."
         elif funnel_tag == "support":
-            tone_instruction = "Respond with empathy, care, and active support."
-
+            tone_instruction = "Remain calm and helpful, but stay focused on resolving the issue with professionalism and clarity."
         context_intro = (
             f"User Name: {memory['personal'].get('name', '')}\n"
             f"Birthday: {memory['personal'].get('birthday', '')}\n"
