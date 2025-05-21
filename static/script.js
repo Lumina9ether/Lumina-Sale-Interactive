@@ -2,6 +2,7 @@ const orb = document.getElementById("orb");
 const subtitleBox = document.getElementById("subtitles");
 const stopButton = document.getElementById("stop-button");
 let currentAudio = null;
+let recognition;
 
 function setOrbState(state) {
     if (!orb) return;
@@ -24,10 +25,16 @@ async function speak(text) {
             if (currentAudio) currentAudio.pause();
             currentAudio = new Audio(data.audio);
             currentAudio.play();
-            currentAudio.onended = () => setOrbState("idle");
+            currentAudio.onended = () => {
+                setOrbState("idle");
+                setTimeout(() => startListening(), 1000);
+            };
         } else {
             setOrbState("speaking");
-            setTimeout(() => setOrbState("idle"), 3000);
+            setTimeout(() => {
+                setOrbState("idle");
+                startListening();
+            }, 3000);
         }
     } catch (err) {
         console.error("Error:", err);
@@ -35,7 +42,30 @@ async function speak(text) {
     }
 }
 
-stopButton.addEventListener("click", () => {
+function startListening() {
+    if (!('webkitSpeechRecognition' in window)) {
+        alert("Your browser does not support voice recognition");
+        return;
+    }
+
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => console.log("🎤 Listening...");
+    recognition.onend = () => console.log("🎤 Stopped listening.");
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        askButton.click();
+    };
+
+    recognition.start();
+}
+
+stopButton?.addEventListener("click", () => {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -130,6 +160,7 @@ if (memoryForm) {
 window.onload = () => {
     loadMilestones?.();
     loadMemoryForm?.();
+    startListening(); // 🔁 Auto voice loop starts here
 };
 
 const ctaButton = document.createElement("button");
@@ -165,7 +196,6 @@ function showCTA(tier) {
     ctaButton.style.display = "inline-block";
 }
 
-
 const emailInput = document.getElementById("email-input");
 const emailButton = document.getElementById("email-submit-button");
 const emailConfirm = document.getElementById("email-confirm");
@@ -177,8 +207,7 @@ emailButton?.addEventListener("click", async () => {
         return;
     }
 
-    const ctaButton = document.getElementById("cta-button");
-    const tierUrl = ctaButton?.onclick?.toString().includes("stripe.com")
+    const ctaUrl = ctaButton?.onclick?.toString().includes("stripe.com")
         ? (ctaButton?.onclick + "").match(/https[^\"]+/)?.[0] || ""
         : "";
 
@@ -186,7 +215,7 @@ emailButton?.addEventListener("click", async () => {
         const res = await fetch("/save-lead", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, tierUrl })
+            body: JSON.stringify({ email, tierUrl: ctaUrl })
         });
 
         const data = await res.json();
